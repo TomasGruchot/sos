@@ -10,6 +10,7 @@ export function SessionView() {
     playing,
     setPlaying,
     progress,
+    mediaDuration,
     restart,
     closeSession,
   } = useApp();
@@ -17,9 +18,10 @@ export function SessionView() {
   if (!session) return null;
 
   const isPlaylist = session.type === "playlist";
-  const total = isPlaylist
+  const listed = isPlaylist
     ? session.playlist.tracks[session.trackIndex]?.durationSec ?? 0
     : session.meditation.durationSec;
+  const total = mediaDuration > 0 ? mediaDuration : listed;
   const pct = total ? Math.min(100, (progress / total) * 100) : 0;
 
   return (
@@ -43,11 +45,13 @@ export function SessionView() {
         <span
           className="absolute h-56 w-56 rounded-full blur-3xl"
           style={{
-            background: isPlaylist
-              ? session.playlist.mode === "energize"
+            background: !isPlaylist
+              ? "oklch(0.65 0.08 200 / 0.28)"
+              : session.playlist.mode === "energize"
                 ? "oklch(0.7 0.14 70 / 0.28)"
-                : "oklch(0.6 0.12 240 / 0.3)"
-              : "oklch(0.65 0.08 200 / 0.28)",
+                : session.playlist.mode === "rescue"
+                  ? "oklch(0.65 0.16 18 / 0.3)"
+                  : "oklch(0.6 0.12 240 / 0.3)",
             animation: "breathe 6s ease-in-out infinite",
           }}
         />

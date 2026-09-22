@@ -17,6 +17,7 @@ import {
   type Meditation,
 } from "@/data/content";
 import { sameSrc } from "@/lib/audio";
+import { restorePlayback, snapshotFrom, writePlayback } from "@/lib/playback";
 import { Home } from "@/pages/Home";
 import { PlaylistsPage } from "@/pages/Playlists";
 import { MeditationsPage } from "@/pages/Meditations";
@@ -43,14 +44,37 @@ const pageMotion = {
 };
 
 export default function App() {
+  const [boot] = useState(restorePlayback);
   const [page, setPage] = useState<Page>("home");
-  const [mode, setMode] = useState<Mode | null>(null);
+  const [mode, setMode] = useState<Mode | null>(boot?.mode ?? null);
   const [choosing, setChoosing] = useState(false);
-  const [session, setSession] = useState<Session>(null);
-  const [playing, setPlaying] = useState(false);
-  const [progress, setProgress] = useState(0);
+  const [session, setSession] = useState<Session>(boot?.session ?? null);
+  const [playing, setPlaying] = useState(boot?.playing ?? false);
+  const [progress, setProgress] = useState(boot?.time ?? 0);
+  const [mediaDuration, setMediaDuration] = useState(0);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const resumeAt = useRef<number | null>(boot && boot.time > 0 ? boot.time : null);
+  const playingRef = useRef(playing);
+  const sessionRef = useRef(session);
+  const progressRef = useRef(progress);
+  playingRef.current = playing;
+  sessionRef.current = session;
+  progressRef.current = progress;
   const { showGate } = usePwa();
+
+  const applyResume = useCallback((el: HTMLAudioElement) => {
+    if (resumeAt.current == null) return false;
+    const target = resumeAt.current;
+    const max =
+      Number.isFinite(el.duration) && el.duration > 0
+        ? Math.max(0, el.duration - 0.25)
+        : target;
+    const next = Math.min(Math.max(0, target), max);
+    resumeAt.current = null;
+    if (Math.abs((el.currentTime || 0) - next) > 0.05) el.currentTime = next;
+    setProgress(next);
+    return true;
+  }, []);
 
   const attachAndPlay = useCallback((src: string | undefined) => {
     const el = audioRef.current;
@@ -63,27 +87,33 @@ export default function App() {
   }, []);
 
   const startPlaylist = useCallback((playlist: Playlist, trackIndex = 0) => {
+    resumeAt.current = null;
     setMode(playlist.mode);
     setChoosing(false);
     setSession({ type: "playlist", playlist, trackIndex });
     setProgress(0);
+    setMediaDuration(0);
     setPlaying(true);
     attachAndPlay(playlist.tracks[trackIndex]?.src);
   }, [attachAndPlay]);
 
   const startMeditation = useCallback((meditation: Meditation) => {
+    resumeAt.current = null;
     setMode("calm");
     setChoosing(false);
     setSession({ type: "meditation", meditation });
     setProgress(0);
+    setMediaDuration(0);
     setPlaying(true);
     attachAndPlay(meditation.src);
   }, [attachAndPlay]);
 
   const closeSession = useCallback(() => {
+    resumeAt.current = null;
     setSession(null);
     setPlaying(false);
     setProgress(0);
+    setMediaDuration(0);
     const el = audioRef.current;
     if (el) {
       el.pause();
@@ -129,7 +159,17 @@ export default function App() {
     const el = audioRef.current;
     if (!el) return;
 
-    const onTime = () => setProgress(el.currentTime || 0);
+    const onTime = () => {
+      if (resumeAt.current != null) return;
+      setProgress(el.currentTime || 0);
+    };
+    const onMeta = () => {
+      const next = el.duration;
+      setMediaDuration(Number.isFinite(next) ? next : 0);
+      if (!applyResume(el)) return;
+      if (playingRef.current) void el.play().catch(() => setPlaying(false));
+      else el.pause();
+    };
     const onEnded = () => {
       setSession((current) => {
         if (!current) return current;
@@ -142,20 +182,25 @@ export default function App() {
           return { ...current, trackIndex: current.trackIndex + 1 };
         }
         setPlaying(false);
-        setProgress(currentDuration(current));
+        const end = Number.isFinite(el.duration) ? el.duration : currentDuration(current);
+        setProgress(end);
         return current;
       });
     };
 
     el.addEventListener("timeupdate", onTime);
+    el.addEventListener("loadedmetadata", onMeta);
+    el.addEventListener("durationchange", onMeta);
     el.addEventListener("ended", onEnded);
     el.addEventListener("seeked", onTime);
     return () => {
       el.removeEventListener("timeupdate", onTime);
+      el.removeEventListener("loadedmetadata", onMeta);
+      el.removeEventListener("durationchange", onMeta);
       el.removeEventListener("ended", onEnded);
       el.removeEventListener("seeked", onTime);
     };
-  }, []);
+  }, [applyResume]);
 
   useEffect(() => {
     const el = audioRef.current;
@@ -166,10 +211,63 @@ export default function App() {
       return;
     }
     if (!sameSrc(el.getAttribute("src") ?? el.src, src)) {
+      setMediaDuration(0);
       el.src = src;
     }
-    if (playing) void el.play().catch(() => undefined);
+    if (resumeAt.current != null) {
+      if (el.readyState < 1) return;
+      applyResume(el);
+    }
+    if (playing) void el.play().catch(() => setPlaying(false));
     else el.pause();
+  }, [session, playing, applyResume]);
+
+  const progressSecond = Math.floor(progress);
+
+  useEffect(() => {
+    const time = resumeAt.current ?? audioRef.current?.currentTime ?? progress;
+    writePlayback(snapshotFrom(session, time, playing));
+  }, [session, playing, progressSecond]);
+
+  useEffect(() => {
+    const save = () => {
+      const time = resumeAt.current ?? audioRef.current?.currentTime ?? progressRef.current;
+      writePlayback(snapshotFrom(sessionRef.current, time, playingRef.current));
+    };
+    const onHide = () => {
+      if (document.visibilityState === "hidden") save();
+    };
+    window.addEventListener("pagehide", save);
+    document.addEventListener("visibilitychange", onHide);
+    return () => {
+      window.removeEventListener("pagehide", save);
+      document.removeEventListener("visibilitychange", onHide);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!("mediaSession" in navigator)) return;
+    if (!session) {
+      navigator.mediaSession.metadata = null;
+      navigator.mediaSession.playbackState = "none";
+      return;
+    }
+    const title =
+      session.type === "playlist"
+        ? (session.playlist.tracks[session.trackIndex]?.title ?? session.playlist.title)
+        : session.meditation.title;
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title,
+      artist: "SOS",
+      album: "SOS",
+    });
+    navigator.mediaSession.playbackState = playing ? "playing" : "paused";
+    try {
+      navigator.mediaSession.setActionHandler("play", () => setPlaying(true));
+      navigator.mediaSession.setActionHandler("pause", () => setPlaying(false));
+    } catch {
+      /* prohlížeč akci nepodporuje */
+    }
   }, [session, playing]);
 
   const value = useMemo(
@@ -195,6 +293,7 @@ export default function App() {
       setPlaying,
       progress,
       setProgress,
+      mediaDuration,
     }),
     [
       page,
@@ -209,6 +308,7 @@ export default function App() {
       closeSession,
       playing,
       progress,
+      mediaDuration,
     ],
   );
 

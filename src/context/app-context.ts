@@ -24,6 +24,7 @@ export type AppState = {
   setPlaying: (v: boolean) => void;
   progress: number;
   setProgress: (n: number) => void;
+  mediaDuration: number;
 };
 
 export const AppContext = createContext<AppState | null>(null);

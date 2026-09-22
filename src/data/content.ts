@@ -4,7 +4,7 @@
  * Příklad: src: "/audio/calm/hlubina-01.mp3"
  */
 
-export type Mode = "calm" | "energize";
+export type Mode = "calm" | "energize" | "rescue";
 export type Page = "home" | "playlists" | "meditations";
 
 export type Track = {
@@ -218,6 +218,22 @@ export const quickModes: Record<Mode, Playlist> = {
       },
     ],
   },
+  rescue: {
+    id: "zachranny-plan",
+    title: "Záchranný plán",
+    subtitle: "Když to potřebuješ hned.",
+    mode: "rescue",
+    accent: "18 55% 52%",
+    tracks: [
+      {
+        id: "zachranny-plan-1",
+        title: "Záchranný plán",
+        artist: "SOS",
+        durationSec: 0,
+        src: "/audio/rescue/zachranny-plan.mp3",
+      },
+    ],
+  },
 };
 
 export function playlistByMode(mode: Mode) {
@@ -225,7 +241,10 @@ export function playlistByMode(mode: Mode) {
 }
 
 export function playlistById(id: string) {
-  return playlists.find((p) => p.id === id);
+  return (
+    playlists.find((p) => p.id === id) ??
+    Object.values(quickModes).find((p) => p.id === id)
+  );
 }
 
 export function meditationById(id: string) {

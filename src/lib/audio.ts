@@ -1,30 +1,33 @@
 const SRC = {
   calm: "/audio/calm/uklidnit.m4a",
   energize: "/audio/energize/nabudit.m4a",
+  rescue: "/audio/rescue/zachranny-plan.mp3",
 } as const;
 
-const warmed = new Set<string>();
-
-/** Stáhne track do HTTP cache, aby play() naskočil bez čekání. */
-export function warmAudio(src: string) {
-  if (typeof document === "undefined" || warmed.has(src)) return;
-  warmed.add(src);
-
-  const link = document.createElement("link");
-  link.rel = "preload";
-  link.as = "audio";
-  link.href = src;
-  document.head.appendChild(link);
-
-  const el = new Audio();
-  el.preload = "auto";
-  el.src = src;
-  el.load();
-}
+/** Stejný název používá service worker (CacheFirst + range). */
+export const AUDIO_CACHE = "sos-audio";
 
 export function warmQuickModes() {
-  warmAudio(SRC.calm);
-  warmAudio(SRC.energize);
+  void cacheAudioOffline(Object.values(SRC));
+}
+
+/** Uloží celé soubory do Cache Storage, aby šly přehrát offline i se Range requesty. */
+export async function cacheAudioOffline(srcs: readonly string[]) {
+  if (typeof caches === "undefined") return;
+  try {
+    const cache = await caches.open(AUDIO_CACHE);
+    await Promise.all(
+      srcs.map(async (src) => {
+        const hit = await cache.match(src);
+        if (hit) return;
+        const res = await fetch(src);
+        if (!res.ok) return;
+        await cache.put(src, res.clone());
+      }),
+    );
+  } catch {
+    /* offline nebo omezené úložiště */
+  }
 }
 
 export function sameSrc(current: string, next: string) {

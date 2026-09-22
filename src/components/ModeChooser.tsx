@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Moon, SunMedium } from "lucide-react";
+import { LifeBuoy, Moon, SunMedium } from "lucide-react";
 import type { Mode } from "@/data/content";
 
 type Props = {
@@ -10,16 +10,29 @@ const options: {
   mode: Mode;
   title: string;
   icon: typeof Moon;
+  glow: string;
+  tile: string;
 }[] = [
   {
     mode: "calm",
     title: "Uklidnit se",
     icon: Moon,
+    glow: "oklch(0.6 0.12 240 / 0.35)",
+    tile: "linear-gradient(180deg, oklch(0.55 0.08 240 / 0.35), oklch(0.3 0.05 250 / 0.2))",
   },
   {
     mode: "energize",
     title: "Nabudit se",
     icon: SunMedium,
+    glow: "oklch(0.75 0.14 70 / 0.32)",
+    tile: "linear-gradient(180deg, oklch(0.75 0.12 80 / 0.35), oklch(0.4 0.08 50 / 0.2))",
+  },
+  {
+    mode: "rescue",
+    title: "Záchranný plán",
+    icon: LifeBuoy,
+    glow: "oklch(0.65 0.16 18 / 0.34)",
+    tile: "linear-gradient(180deg, oklch(0.58 0.14 18 / 0.38), oklch(0.32 0.08 12 / 0.22))",
   },
 ];
 
@@ -37,7 +50,6 @@ export function ModeChooser({ onChoose }: Props) {
     >
       {options.map((opt) => {
         const Icon = opt.icon;
-        const calm = opt.mode === "calm";
         return (
           <motion.button
             key={opt.mode}
@@ -54,19 +66,13 @@ export function ModeChooser({ onChoose }: Props) {
               className="pointer-events-none absolute -right-8 -top-10 h-36 w-36 rounded-full blur-2xl transition-opacity duration-500 group-hover:opacity-100"
               style={{
                 opacity: 0.55,
-                background: calm
-                  ? "oklch(0.6 0.12 240 / 0.35)"
-                  : "oklch(0.75 0.14 70 / 0.32)",
+                background: opt.glow,
               }}
             />
             <span className="relative flex items-center gap-4">
               <span
                 className="grid h-12 w-12 place-items-center rounded-2xl border border-white/10"
-                style={{
-                  background: calm
-                    ? "linear-gradient(180deg, oklch(0.55 0.08 240 / 0.35), oklch(0.3 0.05 250 / 0.2))"
-                    : "linear-gradient(180deg, oklch(0.75 0.12 80 / 0.35), oklch(0.4 0.08 50 / 0.2))",
-                }}
+                style={{ background: opt.tile }}
               >
                 <Icon className="h-5 w-5 text-white/90" strokeWidth={1.5} />
               </span>

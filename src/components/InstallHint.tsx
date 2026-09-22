@@ -104,12 +104,12 @@ function ManualSteps() {
         Nainstalovat z prohlížeče
       </p>
       <p className="mt-1 text-[13px] leading-relaxed text-white/45">
-        Chrome a Edge přidají SOS na plochu i mezi aplikace.
+        Chrome, Edge, Firefox i Samsung Internet umí SOS přidat na plochu.
       </p>
       <ol className="mt-4 space-y-2 text-[14px] leading-relaxed text-white/80">
-        <li>1. Otevři menu prohlížeče (⋮)</li>
-        <li>2. Zvol Nainstalovat SOS</li>
-        <li>3. Potvrď — ikona se objeví na ploše</li>
+        <li>1. Otevři menu prohlížeče</li>
+        <li>2. Zvol Nainstalovat nebo Přidat na plochu</li>
+        <li>3. Potvrď — ikona se objeví na ploše a appka funguje i offline</li>
       </ol>
     </div>
   );

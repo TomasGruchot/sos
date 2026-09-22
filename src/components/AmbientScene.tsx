@@ -25,6 +25,14 @@ export function AmbientScene({ mode, intense = false }: Props) {
         veil: "oklch(0.1 0.03 270 / 0.6)",
       };
     }
+    if (mode === "rescue") {
+      return {
+        a: "oklch(0.4 0.12 18 / 0.5)",
+        b: "oklch(0.32 0.1 350 / 0.4)",
+        c: "oklch(0.28 0.06 30 / 0.32)",
+        veil: "oklch(0.1 0.03 15 / 0.55)",
+      };
+    }
     return {
       a: "oklch(0.32 0.06 270 / 0.45)",
       b: "oklch(0.28 0.05 230 / 0.32)",

@@ -57,7 +57,9 @@ export function SoosOrb({ onPress, open, mode }: Props) {
             ? "bg-[oklch(0.7_0.14_70_/_0.35)]"
             : mode === "calm"
               ? "bg-[oklch(0.62_0.12_240_/_0.38)]"
-              : "bg-[oklch(0.7_0.08_80_/_0.22)]",
+              : mode === "rescue"
+                ? "bg-[oklch(0.64_0.16_18_/_0.36)]"
+                : "bg-[oklch(0.7_0.08_80_/_0.22)]",
         )}
         style={{ animation: "breathe 5.5s ease-in-out infinite" }}
       />
@@ -77,6 +79,7 @@ export function SoosOrb({ onPress, open, mode }: Props) {
           "orb-ring pointer-events-none absolute h-[248px] w-[248px] rounded-full p-[1.5px]",
           mode === "calm" && "orb-ring-calm",
           mode === "energize" && "orb-ring-fire",
+          mode === "rescue" && "orb-ring-rescue",
         )}
         style={{
           WebkitMask:

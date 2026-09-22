@@ -25,16 +25,21 @@ export default defineConfig({
         scope: "/",
         lang: "cs",
         categories: ["music", "health", "lifestyle"],
+        display_override: ["standalone", "minimal-ui"],
+        dir: "ltr",
+        prefer_related_applications: false,
         icons: [
           {
             src: "/icons/icon-192.png",
             sizes: "192x192",
             type: "image/png",
+            purpose: "any",
           },
           {
             src: "/icons/icon-512.png",
             sizes: "512x512",
             type: "image/png",
+            purpose: "any",
           },
           {
             src: "/icons/icon-512-maskable.png",
@@ -45,8 +50,23 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ["**/*.{js,css,html,svg,png,ico,woff2,webmanifest}"],
+        globPatterns: ["**/*.{js,css,html,svg,png,ico,woff,woff2,webmanifest}"],
         navigateFallback: "/index.html",
+        navigateFallbackDenylist: [/^\/audio\//],
+        cleanupOutdatedCaches: true,
+        skipWaiting: true,
+        clientsClaim: true,
+        runtimeCaching: [
+          {
+            urlPattern: /\/audio\/.+\.(?:mp3|m4a|aac|wav|ogg)$/i,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "sos-audio",
+              rangeRequests: true,
+              cacheableResponse: { statuses: [200] },
+            },
+          },
+        ],
       },
       devOptions: {
         enabled: true,
@@ -57,6 +77,11 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+    },
+  },
+  server: {
+    watch: {
+      ignored: ["**/public/audio/**"],
     },
   },
 });
